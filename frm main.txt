@@ -1,0 +1,231 @@
+﻿'********************************************************************************************
+'* Name:       Aiman Haroon
+'* Class:      CIS-1510
+'* Assignment: Project 02 Fall 2020
+'* File:       frmMainDrugs.vb
+'* Purpose:    Pharmacy Drug Inventory Software for Create,Read, and edit items
+'********************************************************************************************
+
+'NewControl1: Maskedtextbox (mtb) for NDC (unique identifier) Key
+'NewControl2: DatetimePicker (dtp) for DateRecieved Field.
+
+Option Strict On
+Option Explicit On
+Option Infer Off
+Option Compare Binary
+
+Imports System.IO
+Imports System.Text
+
+
+Public Class frmMainDrugs
+
+    Private DrugsArray(999) As Drugs        'array set to 1000 values
+    Private NumDrugs As Integer = 0        'number of drug starts at 0
+    Private Const FILENAME As String = "StoredData.txt"
+
+
+    Private Sub frmMainDrugs_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+        pnlResults.Visible = False
+        btnChange.Visible = False
+        LoadDrugs()
+
+    End Sub
+
+    Private Sub lstDrugs_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstDrugs.SelectedIndexChanged
+        If lstDrugs.SelectedIndex = -1 Then
+            pnlResults.Visible = False
+            btnChange.Visible = False
+        Else
+            btnChange.Visible = True
+            pnlResults.Visible = True
+
+
+            Dim inStockVal As String = ""
+
+            If DrugsArray(lstDrugs.SelectedIndex).inStock = 0 Then
+                inStockVal = "No"
+            ElseIf DrugsArray(lstDrugs.SelectedIndex).inStock = 1 Then
+                inStockVal = "Yes"
+            End If
+
+            lblDrugNDC.Text = DrugsArray(lstDrugs.SelectedIndex).NDC
+            lblDrugName.Text = DrugsArray(lstDrugs.SelectedIndex).drugName
+            lblDosage.Text = DrugsArray(lstDrugs.SelectedIndex).dosage
+            lblDesc.Text = DrugsArray(lstDrugs.SelectedIndex).desc
+            lblUnitQuantity.Text = DrugsArray(lstDrugs.SelectedIndex).unitQuantity
+            lblSupplier.Text = DrugsArray(lstDrugs.SelectedIndex).supplier
+            lblDrugType.Text = DrugsArray(lstDrugs.SelectedIndex).drugType
+            lblCategory.Text = DrugsArray(lstDrugs.SelectedIndex).category
+            lblUnitPrice.Text = "$" & DrugsArray(lstDrugs.SelectedIndex).unitPrice.ToString("N2")
+            lblPackagePrice.Text = "$" & DrugsArray(lstDrugs.SelectedIndex).packagePrice.ToString("N2")
+            lblInStock.Text = inStockVal
+            lblDateRecieved.Text = DrugsArray(lstDrugs.SelectedIndex).dateReceived
+
+
+            'show the text in red if the Count is 0
+            If DrugsArray(lstDrugs.SelectedIndex).count = 0 Then
+                lblCount.ForeColor = Color.Red
+                lblCount.Text = DrugsArray(lstDrugs.SelectedIndex).count.ToString
+            Else
+                lblCount.ForeColor = Color.Black
+                lblCount.Text = DrugsArray(lstDrugs.SelectedIndex).count.ToString
+            End If
+
+        End If
+    End Sub
+
+    Private Sub btnAddDrug_Click(sender As Object, e As EventArgs) Handles btnAddDrug.Click
+        Dim newDrug As Drugs = New Drugs
+        Dim index As Integer
+
+        Dim changeDrugForm As frmChangeDrugs = New frmChangeDrugs(newDrug, True)
+
+        changeDrugForm.ShowDialog()
+
+        If newDrug.NDC <> "" Then
+            'show the new drug to main form listbox
+            index = NumDrugs
+
+            DrugsArray(index) = newDrug
+            NumDrugs += 1
+
+            lstDrugs.SelectedIndex = -1
+            lstDrugs.Items.Add(DrugsArray(index).drugName.ToUpper.Trim.PadRight(32) &
+                                       "(" & DrugsArray(index).dosage.ToUpper.Trim & ")")
+
+            UpdateFile()
+
+
+        End If
+
+    End Sub
+
+    Private Sub lstDrugs_DoubleClick(sender As Object, e As EventArgs) Handles lstDrugs.DoubleClick
+        Dim index As Integer
+
+        If lstDrugs.SelectedIndex <> -1 Then
+            index = lstDrugs.SelectedIndex
+            Dim changeDrugForm As frmChangeDrugs = New frmChangeDrugs(DrugsArray(index), False)
+
+            changeDrugForm.ShowDialog()
+            UpdateFile()
+
+            lstDrugs.SelectedIndex = index
+            lstDrugs.Items(index) = (DrugsArray(index).drugName.ToUpper.Trim.PadRight(32) &
+                                       "(" & DrugsArray(index).dosage.ToUpper.Trim & ")")
+
+            lstDrugs.SelectedIndex = -1
+            lstDrugs.SelectedIndex = index
+            lstDrugs.SelectedItem = index
+
+        End If
+    End Sub
+
+    Private Sub btnChange_Click(sender As Object, e As EventArgs) Handles btnChange.Click
+        lstDrugs_DoubleClick(Nothing, Nothing)
+    End Sub
+
+    Private Sub btnExit_Click(sender As Object, e As EventArgs) Handles btnExit.Click
+        Me.Close()
+    End Sub
+
+    Private Sub btnAbout_Click(sender As Object, e As EventArgs) Handles btnAbout.Click
+        frmAbout.ShowDialog()
+
+    End Sub
+
+    Private Sub LoadDrugs()
+
+        'Reading from the File 
+        Dim inFile As StreamReader
+        Dim output As StringBuilder = New StringBuilder("")
+        Dim wholeLine As String = ""
+        Dim splitString As String()
+
+
+        If File.Exists(FILENAME) Then
+            inFile = File.OpenText(FILENAME)
+
+
+            Do Until inFile.Peek = -1
+
+                wholeLine = inFile.ReadLine()
+                If (wholeLine.Contains("|"c)) Then
+                    splitString = wholeLine.Split("|"c)
+
+                    Dim index As Integer = NumDrugs
+
+                    NumDrugs += 1
+                    DrugsArray(index) = New Drugs()
+
+                    For counter As Integer = 0 To NumDrugs - 1
+
+                        DrugsArray(index).NDC = splitString(0)
+                        DrugsArray(index).drugName = splitString(1)
+                        DrugsArray(index).dosage = splitString(2)
+                        DrugsArray(index).desc = splitString(3)
+                        DrugsArray(index).supplier = splitString(4)
+                        DrugsArray(index).drugType = splitString(5)
+                        DrugsArray(index).category = splitString(6)
+                        DrugsArray(index).unitPrice = CDec(splitString(7))
+                        DrugsArray(index).packagePrice = CDec(splitString(8))
+                        DrugsArray(index).inStock = CInt(splitString(9))
+                        DrugsArray(index).count = CInt(splitString(10))
+                        DrugsArray(index).dateReceived = splitString(11)
+                        DrugsArray(index).unitQuantity = splitString(12)
+
+                        output = New StringBuilder("")
+                        output.Append(DrugsArray(index).drugName.ToUpper.Trim.PadRight(32) &
+                                       "(" & DrugsArray(index).dosage.ToUpper.Trim & ")")
+
+                    Next
+                    lstDrugs.Items.Add(output)
+
+                End If
+            Loop
+
+            inFile.Close()
+        End If
+
+    End Sub
+
+
+    Private Sub UpdateFile()
+        Dim outFile As StreamWriter
+
+        If File.Exists(FILENAME) Then
+
+            File.Delete(FILENAME)
+            lstDrugs.Items.Clear()
+        End If
+
+        outFile = File.CreateText(FILENAME)
+
+        For i As Integer = 0 To NumDrugs - 1
+
+            outFile.WriteLine(DrugsArray(i).NDC & "|" &
+                                  DrugsArray(i).drugName & "|" &
+                                  DrugsArray(i).dosage & "|" &
+                                  DrugsArray(i).desc & "|" &
+                                  DrugsArray(i).supplier & "|" &
+                                  DrugsArray(i).drugType & "|" &
+                                  DrugsArray(i).category & "|" &
+                                  DrugsArray(i).unitPrice.ToString("N2") & "|" &
+                                  DrugsArray(i).packagePrice.ToString("N2") & "|" &
+                                  DrugsArray(i).inStock & "|" &
+                                  DrugsArray(i).count & "|" &
+                                  DrugsArray(i).dateReceived & "|" &
+                                  DrugsArray(i).unitQuantity)
+
+        Next
+        outFile.Close()
+        NumDrugs = 0
+        LoadDrugs()
+
+
+    End Sub
+
+
+End Class
